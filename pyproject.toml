@@ -1,0 +1,23 @@
+[project]
+name = "bearcat"
+version = "1.0.0"
+authors = [
+    { name="Liam Fruzyna", email="liam@fruzyna.net" }
+]
+description = "Python library for communicating with Uniden Bearcat scanners."
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Topic :: Communications :: Ham Radio",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.urls]
+Homepage = "https://github.com/fruzyna/bearcat"
+Issues = "https://github.com/fruzyna/bearcat/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
