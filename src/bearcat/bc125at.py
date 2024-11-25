@@ -1,5 +1,5 @@
 """Contains the class representation of the Uniden BC125AT scanner."""
-from bearcat import Modulation, KeyAction, DelayTime, UnexpectedResultError, Screen
+from bearcat import Modulation, KeyAction, DelayTime, UnexpectedResultError, Screen, CommandNotFound, CommandInvalid
 
 import serial
 from enum import Enum
@@ -206,13 +206,13 @@ class BC125AT:
 
         # determine if the command successfully ran
         if res_parts[0] == 'ERR':
-            raise UnexpectedResultError('Scanner did not recognize command')
-        elif res_parts[0] == 'NG':
-            raise UnexpectedResultError('Scanner did not recognize command at this time')
+            raise CommandNotFound('Scanner did not recognize command')
         elif res_parts[0] != command[0]:
             raise UnexpectedResultError(f'Unrecognized command response, {res_parts[0]}')
         elif len(res_parts) == 1:
             raise UnexpectedResultError('No value returned')
+        elif res_parts[1] == 'NG':
+            raise CommandInvalid('Scanner did not recognize command at this time')
 
         # skip command and return result
         return res_parts[1:]

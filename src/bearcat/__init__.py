@@ -30,6 +30,16 @@ class DelayTime(Enum):
     FIVE = '5'
 
 
+class CommandNotFound(Exception):
+    """Exception raised when a command returns an error."""
+    pass
+
+
+class CommandInvalid(Exception):
+    """Exception raised when a command used an invalid set of parameters or requires program mode."""
+    pass
+
+
 class UnexpectedResultError(Exception):
     """Exception raised when a command does not return an expected result."""
     pass
