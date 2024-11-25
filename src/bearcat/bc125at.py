@@ -92,11 +92,12 @@ class BC125AT:
                 tone: optional CTCSS tone in hertz or DSC code, if tone is 0 (default), tone_code is used instead
                 tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
             """
-            assert 0 < index <= BC125AT.TOTAL_CHANNELS or index == -1
+            assert 0 < index <= BC125AT.TOTAL_CHANNELS or index == -1, f'Invalid channel number, {index}'
             self.index = index
-            assert len(name) <= BC125AT.DISPLAY_WIDTH
+            assert len(name) <= BC125AT.DISPLAY_WIDTH, f'Name too long, "{name}"'
             self.name = name
-            assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ
+            assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ or frequency == 0,\
+                f'Invalid frequency, {frequency}'
             self.frequency = frequency
             self.modulation = modulation
             if tone:
