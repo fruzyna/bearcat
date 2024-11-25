@@ -112,7 +112,7 @@ class BC125AT:
     class Channel(RadioState):
         """Object representation of radio state used with CIN command."""
 
-        def __init__(self, index: int, name: str, frequency: int, modulation: Modulation, tone='ALL',
+        def __init__(self, index: int, name: str, frequency: int, modulation: Modulation, tone=0, tone_code=0,
                      delay=DelayTime.TWO, lockout=True, priority=False):
             """
             Args:
@@ -120,23 +120,25 @@ class BC125AT:
                 name: name of the selected channel, may be blank, must be <= 16 characters
                 frequency: channel frequency in Hz
                 modulation: modulation type
-                tone: optional CTCSS tone in hertz or DSC code, default ALL/NONE
+                tone: optional CTCSS tone in hertz or DSC code, if tone is 0 (default), tone_code is used instead
+                tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
                 delay: optional delay, default TWO
                 lockout: optional channel lockout (removal from scan), default True
                 priority: optional channel priority (one per bank), default False
             """
-            super().__init__(index, name, frequency, modulation, tone)
+            super().__init__(index, name, frequency, modulation, tone, tone_code)
             self.index = index
             self.delay = delay
             self.lockout = lockout
             self.priority = priority
 
         @classmethod
-        def from_cin_response(cls, index: str, name: str, frequency: str, modulation: str, tone: str, delay: str,
+        def from_cin_response(cls, index: str, name: str, frequency: str, modulation: str, tone_code: str, delay: str,
                               lockout: str, priority: str) -> 'BC125AT.Channel':
             """Alternative constructor, designed to take the response to the CIN command."""
             return cls(int(index), name, int(frequency) * BC125AT.FREQUENCY_SCALE, Modulation(modulation),
-                       int(tone), DelayTime(delay), bool(int(lockout)), bool(int(priority)))
+                       tone_code=int(tone_code), delay=DelayTime(delay), lockout=bool(int(lockout)),
+                       priority=bool(int(priority)))
 
         def to_response(self) -> List[str]:
             """Generates a list of parameters from the channel for the CIN command."""
