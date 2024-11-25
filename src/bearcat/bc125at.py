@@ -437,7 +437,7 @@ class BC125AT:
         Returns:
             whether the Canadian (True) or American (False) band plan is selected
         """
-        return bool(self._get_program_mode_number('BSV'))
+        return bool(self._get_program_mode_number('BPL'))
 
     def get_key_beep(self) -> Tuple[bool, bool]:
         """
