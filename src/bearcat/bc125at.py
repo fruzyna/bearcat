@@ -88,6 +88,7 @@ class BC125AT:
             self.index = index
             assert len(name) <= BC125AT.DISPLAY_WIDTH
             self.name = name
+            assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ
             self.frequency = frequency
             self.modulation = modulation
             if tone:
