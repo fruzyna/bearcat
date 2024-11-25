@@ -77,7 +77,7 @@ class BC125AT:
         def __init__(self, index: int, name: str, frequency: int, modulation: Modulation, tone=0, tone_code=0):
             """
             Args:
-                index: channel number (1-500)
+                index: channel number (1 - 500)
                 name: name of the selected channel, may be blank, must be <= 16 characters
                 frequency: channel frequency in Hz
                 modulation: modulation type
@@ -581,7 +581,7 @@ class BC125AT:
         Args:
             level: volume level, 0 - 15
         """
-        assert 0 <= level <= 15, f'Unexpected volume level {level}, expected 0-15'
+        assert 0 <= level <= 15, f'Unexpected volume level {level}, expected 0 - 15'
         self._set_value('VOL', level)
 
     def set_squelch(self, level: int):
@@ -591,7 +591,7 @@ class BC125AT:
         Args:
             level: volume level, 0 - 15
         """
-        assert 0 <= level <= 15, f'Unexpected squelch level {level}, expected 0-15'
+        assert 0 <= level <= 15, f'Unexpected squelch level {level}, expected 0 - 15'
         self._set_value('SQL', level)
 
     #
@@ -743,7 +743,7 @@ class BC125AT:
             lower_limit: desired custom search lower frequency limit in Hz
             upper_limit: desired custom search upper frequency limit in Hz
         """
-        assert 1 <= index <= 10, f'Unexpected search index {index}, expected 1-10'
+        assert 1 <= index <= 10, f'Unexpected search index {index}, expected 1 - 10'
         assert BC125AT.MIN_FREQUENCY_HZ <= lower_limit <= BC125AT.MAX_FREQUENCY_HZ,\
             f'Unexpected lower limit {lower_limit}, expected 25 - 512 MHz'
         assert BC125AT.MIN_FREQUENCY_HZ <= upper_limit <= BC125AT.MAX_FREQUENCY_HZ,\
