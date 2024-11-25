@@ -1,5 +1,6 @@
 """Contains the class representation of the Uniden BC125AT scanner."""
-from bearcat import Modulation, KeyAction, DelayTime, UnexpectedResultError, Screen, CommandNotFound, CommandInvalid
+from bearcat import Modulation, KeyAction, DelayTime, UnexpectedResultError, Screen, CommandNotFound, CommandInvalid, \
+    OperationMode
 
 import serial
 from enum import Enum
@@ -8,8 +9,8 @@ from typing import Union, Tuple, List
 
 class BC125AT:
     """
-    Object for interacting with the Uniden BC125AT serial API. All official and known unofficial calls are supported.
-    See https://info.uniden.com/twiki/pub/UnidenMan4/BC125AT/BC125AT_PC_Protocol_V1.01.pdf for official API.
+    Object for interacting with the Uniden BC125AT serial API. All official and many known unofficial calls are
+    supported. See https://info.uniden.com/twiki/pub/UnidenMan4/BC125AT/BC125AT_PC_Protocol_V1.01.pdf for official API.
     """
 
     ENCODING = 'ascii'
@@ -408,6 +409,38 @@ class BC125AT:
         # TODO: determine scaling factor of voltage A/D and return voltage
         return int(response[0]) / 255, int(response[1]) * BC125AT.FREQUENCY_SCALE
 
+    def get_electronic_serial_number(self) -> Tuple[str, str, str]:
+        """
+        Sends the get electronic serial number (ESN) command. This appears to be an unofficial and undocumented command
+        for all scanners. It also appears to be unused on the BC125AT.
+
+        Returns:
+            14 Xs, likely an unused serial number
+            3 0s, likely an unused product code
+            1
+        """
+        response = self._execute_command('ESN')
+        self._check_response(response, 3)
+        return response[0], response[1], response[2]
+
+    def memory_read(self, location: int) -> Tuple[List[int], int]:
+        """
+        Sends the memory read (MRD) command. This appears to be an unofficial and undocumented command for all
+        scanners. There is a corresponding memory write (MWR) command that I am too afraid to investigate right now.
+
+        Args:
+            32-bit value, likely register number
+
+        Returns:
+            16 bytes likely starting at the given memory location
+            32-bit value
+        """
+        assert 0 <= location <= 0xFFFFFFFF
+        response = self._execute_command('MRD', str(location))
+        self._check_response(response, 18)
+        assert int(response[0], 16) == location
+        return [int(b, 16) for b in response[1:17]], int(response[17], 16)
+
     #
     # Program Mode Getters
     #
@@ -596,6 +629,32 @@ class BC125AT:
         """
         assert 0 <= level <= 15, f'Unexpected squelch level {level}, expected 0 - 15'
         self._set_value('SQL', level)
+
+    def go_to_quick_search_hold_mode(self, frequency: int, delay=DelayTime.TWO):
+        """
+        Go to quick search hold mode (QSH) command. This is an unofficial command for the BC125AT.
+
+        Args:
+            frequency: channel frequency in Hz
+            delay: optional delay, default TWO
+        """
+        assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ
+        self._check_ok(self._execute_command('QSH', str(int(frequency / self.FREQUENCY_SCALE)), '', '', '', '',
+                                             delay.value, '', '', '', '', '', '', ''))
+
+    def jump_to_channel(self, channel: int):
+        """
+        Jump to number tag (JNT) command. This is an unofficial command for the BC125AT.
+
+        Args:
+            channel: channel number
+        """
+        assert 1 <= channel <= self.TOTAL_CHANNELS, f'Unexpected channel number {channel}, expected 1 - 500'
+        self._check_ok(self._execute_command('JNT', '', str(channel - 1)))
+
+    def jump_mode(self, mode: OperationMode):
+        """Jump mode (JPM) command. This is an unofficial command for the BC125AT."""
+        self._set_value('JPM', mode.value)
 
     #
     # Program Mode Setters

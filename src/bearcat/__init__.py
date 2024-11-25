@@ -30,6 +30,16 @@ class DelayTime(Enum):
     FIVE = '5'
 
 
+class OperationMode(Enum):
+    """Enumeration of operation modes of the scanner."""
+    SCAN = 'SCN_MODE'
+    SERVICE_SEARCH = 'SVC_MODE'
+    CUSTOM_SEARCH = 'CTM_MODE'
+    CLOSE_CALL = 'CC_MODE'
+    WEATHER = 'WX_MODE'
+    TONE_OUT = 'FTO_MODE'
+
+
 class CommandNotFound(Exception):
     """Exception raised when a command returns an error."""
     pass
