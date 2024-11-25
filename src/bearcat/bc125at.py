@@ -72,6 +72,13 @@ class BC125AT:
         DND = '2'
         ONLY = '3'
 
+    class TestMode(Enum):
+        """Enumeration of various hardware test modes available on the BC125AT."""
+        SOFTWARE = '1'
+        CLOSE_CALL = '2'
+        WEATHER_ALERT = '3'
+        KEYPAD = '4'
+
     class RadioState:
         """Object representation of radio state returned by both GLG and CIN commands."""
 
@@ -655,6 +662,15 @@ class BC125AT:
     def jump_mode(self, mode: OperationMode):
         """Jump mode (JPM) command. This is an unofficial command for the BC125AT."""
         self._set_value('JPM', mode.value)
+
+    def enter_test_mode(self, mode: TestMode):
+        """Enter test mode (TST) command. This appears to be an unofficial and undocumented command for all scanners."""
+        assert self._in_program_mode, 'Scanner must be manually put into program mode to use test mode'
+        try:
+            self._execute_command('TST', mode.value, 'UNIDEN_TEST_MODE')
+        except UnexpectedResultError:
+            pass
+        self._in_program_mode = False
 
     #
     # Program Mode Setters
