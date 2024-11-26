@@ -2,8 +2,10 @@
 from bearcat import Modulation, KeyAction, DelayTime, UnexpectedResultError, Screen, CommandNotFound, CommandInvalid, \
     OperationMode
 
+import socket
 import serial
 from enum import Enum
+from threading import Thread, Lock
 from typing import Union, Tuple, List
 
 
@@ -19,6 +21,7 @@ class BC125AT:
     FREQUENCY_SCALE = 100
     MIN_FREQUENCY_HZ = int(25e6)
     MAX_FREQUENCY_HZ = int(512e6)
+    BAUD_RATES = [4800, 9600, 19200, 38400, 57600, 115200]
     AVAILABLE_KEYS = [
         '<', '^', '>'
         'H', '1', '2', '3',
@@ -167,39 +170,88 @@ class BC125AT:
             baud_rate: optional serial port speed in bits per second, default 115200
             timeout: optional serial connection timeout in seconds, default 1/10
         """
-        assert baud_rate in [4800, 9600, 19200, 38400, 57600, 115200]
-        self._serial = serial.Serial(port=port, baudrate=baud_rate, stopbits=serial.STOPBITS_ONE,
-                                     bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, xonxoff=False, rtscts=False,
-                                     dsrdtr=False, timeout=timeout)
+        if len(port.split('.')) == 4:
+            self._serial = None
+            if ':' in port:
+                parts = port.split(':')
+                address = parts[0]
+                port = int(parts[1])
+            else:
+                address = port
+                port = 65125
+
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._socket.connect((address, port))
+        else:
+            self._socket = None
+            assert baud_rate in self.BAUD_RATES
+            self._serial = serial.Serial(port=port, baudrate=baud_rate, stopbits=serial.STOPBITS_ONE,
+                                         bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, xonxoff=False,
+                                         rtscts=False, dsrdtr=False, timeout=timeout)
+
         self._in_program_mode = False
         self.debug = False
+        self._cmd_lock = Lock()
+
+    def listen(self, address='127.0.0.1', port=65125):
+        """Creates a server socket for other BC125AT instances to send their bytes to."""
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((address, port))
+        s.listen()
+        Thread(target=self._server_thread, args=(s,), daemon=True).start()
+
+    def _server_thread(self, s: socket.socket):
+        """Thread that accepts all incoming connections to the server socket. Created automatically by listen()."""
+        while True:
+            client, addr = s.accept()
+            Thread(target=self._client_listener, args=(client,), daemon=True).start()
+
+    def _client_listener(self, s: socket.socket):
+        """Thread that handles all active client connections. Create automatically by _server_thread()."""
+        while True:
+            recv_bytes = s.recv(4096)
+            if not recv_bytes:
+                break
+
+            s.sendall(self._execute_command_raw(recv_bytes))
+
+        s.close()
 
     #
     # Command Execution Helpers
     #
+
+    def _execute_command_raw(self, command: bytes) -> bytes:
+        """Executes a command and returns the response all in bytes."""
+        with self._cmd_lock:
+            if self._serial:
+                self._serial.write(command)
+                return self._serial.readline()
+            elif self._socket:
+                self._socket.sendall(command)
+                return self._socket.recv(4096)
 
     def _execute_command(self, *command: str) -> List[str]:
         """Executes a command and returns the response."""
         # build and send command
         cmd_str = ','.join(command).upper() + '\r'
         cmd_bytes = cmd_str.encode(BC125AT.ENCODING)
-        self._serial.write(cmd_bytes)
+        res_bytes = self._execute_command_raw(cmd_bytes)
         if self.debug:
             print('[SENT]\t\t', cmd_str)
 
         # read the command response and replace special characters with reasonable alternatives
         # TODO: figure out how to manually decode with a custom char set
-        res_bytes = self._serial.readline().replace(b'\x81', b'|^').replace(b'\x82', b'|v').replace(b'\x8b', b'F')\
-                                           .replace(b'\x8c', b'P').replace(b'\x91', b'+').replace(b'\x92', b'C')\
-                                           .replace(b'\x8d\x8e\x8f\x90', b'HOLD').replace(b'\x93\x94\x96\x97', b'TL/O')\
-                                           .replace(b'\x95\x96\x97', b'L/O').replace(b'\x98\x99\x9a', b'AM')\
-                                           .replace(b'\x9b\x9c\x9a', b'FM').replace(b'\x9d\x9e\x9c\x9a', b'NFM')\
-                                           .replace(b'\xa1\xa2', b'PRI').replace(b'\xa6', b'1').replace(b'\xa7', b'2')\
-                                           .replace(b'\xa8\xa9', b'3').replace(b'\xaa\xab', b'4')\
-                                           .replace(b'\xac\xad', b'5').replace(b'\xb1', b'[').replace(b'\xb2', b' ')\
-                                           .replace(b'\xb3', b']').replace(b'\xc5\xc6\xc7', b'SRC:')\
-                                           .replace(b'\xcd\xce\xcf', b'BNK:').replace(b'\xd4\xd5\xd6', b'SVC:')\
-                                           .replace(b'\x80', b'=')
+        res_bytes = res_bytes.replace(b'\x80', b'=').replace(b'\x81', b'|^').replace(b'\x82', b'|v')\
+                             .replace(b'\x8b', b'F').replace(b'\x8c', b'P').replace(b'\x91', b'+')\
+                             .replace(b'\x92', b'C').replace(b'\x8d\x8e\x8f\x90', b'HOLD')\
+                             .replace(b'\x93\x94\x96\x97', b'TL/O').replace(b'\x95\x96\x97', b'L/O')\
+                             .replace(b'\x98\x99\x9a', b'AM').replace(b'\x9b\x9c\x9a', b'FM')\
+                             .replace(b'\x9d\x9e\x9c\x9a', b'NFM').replace(b'\xa1\xa2', b'PRI').replace(b'\xa6', b'1')\
+                             .replace(b'\xa7', b'2').replace(b'\xa8\xa9', b'3').replace(b'\xaa\xab', b'4')\
+                             .replace(b'\xac\xad', b'5').replace(b'\xb1', b'[').replace(b'\xb2', b' ')\
+                             .replace(b'\xb3', b']').replace(b'\xc5\xc6\xc7', b'SRC:')\
+                             .replace(b'\xcd\xce\xcf', b'BNK:').replace(b'\xd4\xd5\xd6', b'SVC:')
 
         # check for remaining special characters
         if self.debug:
