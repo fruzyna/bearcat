@@ -23,7 +23,7 @@ class BC125AT:
     MAX_FREQUENCY_HZ = int(512e6)
     BAUD_RATES = [4800, 9600, 19200, 38400, 57600, 115200]
     AVAILABLE_KEYS = [
-        '<', '^', '>'
+        '<', '^', '>',
         'H', '1', '2', '3',
         'S', '4', '5', '6',
         'R', '7', '8', '9',
@@ -289,7 +289,7 @@ class BC125AT:
         """Used for basic commands to check that OK was returned. Raises an UnexpectedResultError is not OK."""
         BC125AT._check_response(response, 1)
         if response[0] != 'OK':
-            raise UnexpectedResultError(f'Not OK response, {response[0]}')
+            raise UnexpectedResultError(f'Not OK response, "{response[0]}"')
 
     def _execute_action(self, cmd: str):
         """Executes a specified action (no arguments, no response value)."""
