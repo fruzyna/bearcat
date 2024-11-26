@@ -1,10 +1,14 @@
 [project]
 name = "bearcat"
 version = "1.1.0"
+dependencies = [
+    "pyserial"
+]
 authors = [
-    { name="Liam Fruzyna", email="liam@fruzyna.net" }
+    { name = "Liam Fruzyna", email = "liam@fruzyna.net" }
 ]
 description = "Python library for communicating with Uniden Bearcat scanners."
+license = { text = "MPL-2.0" }
 readme = "README.md"
 requires-python = ">=3.6"
 classifiers = [
@@ -17,6 +21,7 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/fruzyna/bearcat"
 Issues = "https://github.com/fruzyna/bearcat/issues"
+Repository = "https://github.com/fruzyna/bearcat.git"
 
 [build-system]
 requires = ["hatchling"]
