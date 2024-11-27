@@ -67,7 +67,7 @@ class Screen:
             self.large = large
 
         def __str__(self) -> str:
-            """Apply formatting and character replacement on the line's string."""
+            """Apply formatting on the line's string."""
             text = self.text
 
             # underline characters instead of inverting the colors
@@ -83,8 +83,7 @@ class Screen:
             if underline:
                 text += '\033[0m'
 
-            # replace ASCII placeholder characters with UNICODE versions
-            return text.replace('|^', '↑').replace('|v', '↓').replace('=', '■')
+            return text
 
     def __init__(self, *args):
         """

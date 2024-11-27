@@ -52,6 +52,21 @@ class BC125AT:
         624: 217, 627: 218, 631: 219, 632: 220, 654: 221, 662: 222, 664: 223, 703: 224, 712: 225, 723: 226, 731: 227,
         732: 228, 734: 229, 743: 230, 754: 231
     }
+    BYTE_MAP = {
+        0x80: b'\xe2\x96\x88', 0x81: b'\xe2\x86\x91', 0x82: b'\xe2\x86\x93', 0x83: b'Lo', 0x84: b'Bat', 0x85: b'Lo',
+        0x86: b'ck', 0x87: b'C', 0x88: b'C', 0x89: b'C', 0x8A: b'C', 0x8B: b'\xf0\x9f\x84\xb5',
+        0x8C: b'\xf0\x9f\x84\xbf', 0x8D: b'H', 0x8E: b'O', 0x8F: b'L', 0x90: b'D', 0x91: b'+',
+        0x92: b'\xf0\x9f\x84\xb2', 0x93: b'T', 0x94: b'L', 0x95: b'L', 0x96: b'/', 0x97: b'O', 0x98: b' ', 0x99: b'A',
+        0x9A: b'M', 0x9B: b' ', 0x9C: b'F', 0x9D: b'N', 0x9E: b'F', 0x9F: b' ', 0xA0: b' ', 0xA1: b'P', 0xA2: b'RI',
+        0xA3: b' ', 0xA4: b' ', 0xA5: b' ', 0xA6: b'1', 0xA7: b'2', 0xA8: b'3', 0xA9: b'\xf0\x9f\x93\xb6', 0xAA: b'4',
+        0xAB: b'\xf0\x9f\x93\xb6', 0xAC: b'5', 0xAD: b'\xf0\x9f\x93\xb6', 0xAE: b' ', 0xAF: b' ', 0xB0: b' ',
+        0xB1: b'[', 0xB2: b'\xe2\x96\x88', 0xB3: b']', 0xB4: b' ', 0xB5: b'C', 0xB6: b'C', 0xB7: b'C', 0xB8: b'C',
+        0xB9: b' ', 0xBA: b' ', 0xBB: b' ', 0xBC: b' ', 0xBD: b' ', 0xBE: b' ', 0xBF: b' ', 0xC0: b' ', 0xC1: b' ',
+        0xC2: b' ', 0xC3: b' ', 0xC4: b' ', 0xC5: b'S', 0xC6: b'R', 0xC7: b'C:', 0xC8: b' ', 0xC9: b' ', 0xCA: b' ',
+        0xCB: b' ', 0xCC: b' ', 0xCD: b'B', 0xCE: b'N', 0xCF: b'K:', 0xD0: b' ', 0xD1: b' ', 0xD2: b' ', 0xD3: b' ',
+        0xD4: b'S', 0xD5: b'V', 0xD6: b'C:', 0xD7: b'D:', 0xD8: b'P', 0xD9: b'R', 0xDA: b'I', 0xDB: b' ', 0xDC: b' ',
+        0xDD: b' ', 0xDE: b' ', 0xDF: b' '
+    }
 
     class BacklightMode(Enum):
         """Enumeration of backlight modes supported by the BC125AT."""
@@ -221,6 +236,17 @@ class BC125AT:
     # Command Execution Helpers
     #
 
+    def _extend_ascii(self, input_bytes: bytes) -> bytes:
+        """Replaces Uniden's extended ASCII characters with ASCII ones."""
+        output_bytes = bytes()
+        for b in input_bytes:
+            if b < 0x80:
+                output_bytes += bytes([b])
+            else:
+                output_bytes += self.BYTE_MAP[b]
+
+        return output_bytes
+
     def _execute_command_raw(self, command: bytes) -> bytes:
         """Executes a command and returns the response all in bytes."""
         with self._cmd_lock:
@@ -240,27 +266,8 @@ class BC125AT:
         if self.debug:
             print('[SENT]\t\t', cmd_str)
 
-        # read the command response and replace special characters with reasonable alternatives
-        # TODO: figure out how to manually decode with a custom char set
-        res_bytes = res_bytes.replace(b'\x80', b'=').replace(b'\x81', b'|^').replace(b'\x82', b'|v')\
-                             .replace(b'\x8b', b'F').replace(b'\x8c', b'P').replace(b'\x91', b'+')\
-                             .replace(b'\x92', b'C').replace(b'\x8d\x8e\x8f\x90', b'HOLD')\
-                             .replace(b'\x93\x94\x96\x97', b'TL/O').replace(b'\x95\x96\x97', b'L/O')\
-                             .replace(b'\x98\x99\x9a', b'AM').replace(b'\x9b\x9c\x9a', b'FM')\
-                             .replace(b'\x9d\x9e\x9c\x9a', b'NFM').replace(b'\xa1\xa2', b'PRI').replace(b'\xa6', b'1')\
-                             .replace(b'\xa7', b'2').replace(b'\xa8\xa9', b'3').replace(b'\xaa\xab', b'4')\
-                             .replace(b'\xac\xad', b'5').replace(b'\xb1', b'[').replace(b'\xb2', b' ')\
-                             .replace(b'\xb3', b']').replace(b'\xc5\xc6\xc7', b'SRC:')\
-                             .replace(b'\xcd\xce\xcf', b'BNK:').replace(b'\xd4\xd5\xd6', b'SVC:')
-
-        # check for remaining special characters
-        if self.debug:
-            for i in range(len(res_bytes)):
-                if res_bytes[i] > 128:
-                    print(res_bytes[i])
-
         # decode command string and parse as comma separated string
-        res_str = res_bytes.decode(BC125AT.ENCODING).strip()
+        res_str = self._extend_ascii(res_bytes).decode('UTF-8').strip()
         res_parts = res_str.split(',')
         if self.debug:
             print('[RECEIVED]\t', res_str)
