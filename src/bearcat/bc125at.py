@@ -260,7 +260,10 @@ class BC125AT:
     def _execute_command(self, *command: str) -> List[str]:
         """Executes a command and returns the response."""
         # build and send command
-        cmd_str = ','.join(command).upper() + '\r'
+        if command[0].upper() == 'CIN':
+            cmd_str = ','.join([c.upper() if i != 2 else c for i, c in enumerate(command)]) + '\r'
+        else:
+            cmd_str = ','.join(command).upper() + '\r'
         cmd_bytes = cmd_str.encode(BC125AT.ENCODING)
         res_bytes = self._execute_command_raw(cmd_bytes)
         if self.debug:
@@ -705,7 +708,8 @@ class BC125AT:
             frequency: channel frequency in Hz
             delay: optional delay, default TWO
         """
-        assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ
+        assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ,\
+            f'Unexpected frequency {frequency}, expected {BC125AT.MIN_FREQUENCY_HZ} - {BC125AT.MAX_FREQUENCY_HZ}'
         self._check_ok(self._execute_command('QSH', str(int(frequency / self.FREQUENCY_SCALE)), '', '', '', '',
                                              delay.value, '', '', '', '', '', '', ''))
 
