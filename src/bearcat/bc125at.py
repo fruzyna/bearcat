@@ -178,10 +178,10 @@ class BC125AT:
             priority = ' Priority' if self.priority else ''
             return f'{super().__str__()} {self.delay.value} s {locked}{priority}'
 
-    def __init__(self, port: str, baud_rate=115200, timeout=0.1):
+    def __init__(self, port='127.0.0.1', baud_rate=115200, timeout=0.1):
         """
         Args:
-            port: serial port name, /dev/ttyX on Linux, COMX on Windows
+            port: serial port name (/dev/ttyX on Linux, COMX on Windows) or proxy address, default 127.0.0.1:65125
             baud_rate: optional serial port speed in bits per second, default 115200
             timeout: optional serial connection timeout in seconds, default 1/10
         """
