@@ -23,3 +23,12 @@ bc = BC125AT('/dev/ttyACM0')
 screen, squelch, mute = bc.get_status()
 print(screen)
 ```
+
+## Linux Note
+
+In order to see the UART interface of the scanner on Linux the following command may need to be run after your PC boots.
+[More info can be found here.](https://github.com/rikus--/bc125at-perl/issues/1)
+
+```
+echo "1965 0017 2 076d 0006" >> /sys/bus/usb/drivers/cdc_acm/new_id
+```
