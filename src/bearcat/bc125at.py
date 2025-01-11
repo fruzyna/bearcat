@@ -178,6 +178,11 @@ class BC125AT:
             priority = ' Priority' if self.priority else ''
             return f'{super().__str__()} {self.delay.value} s {locked}{priority}'
 
+        def __eq__(self, other) -> bool:
+            return self.name == other.name and self.frequency == other.frequency and \
+                self.modulation == other.modulation and self.tone_code == other.tone_code and \
+                self.delay == other.delay and self.lockout == other.lockout and self.priority == other.priority
+
     def __init__(self, port='127.0.0.1', baud_rate=115200, timeout=0.1):
         """
         Args:
@@ -975,3 +980,32 @@ class BC125AT:
             key: desired key to release
         """
         self._key_action(key, KeyAction.RELEASE)
+
+    #
+    # Combo Commands
+    #
+
+    def scan_groups(self, *groups: int):
+        """Applies a set of scan channel groups and switches to scan mode."""
+        band_selection = [i + 1 not in groups for i in range(10)]
+        self.set_scan_channel_group(band_selection)
+        self.jump_mode(OperationMode.SCAN)
+
+    def channel(self, channel: int):
+        """Shortcut to jump to a given channel."""
+        self.jump_to_channel(channel)
+
+    def frequency(self, frequency_mhz: float):
+        """Shortcut to jump to a given frequency."""
+        self.go_to_quick_search_hold_mode(frequency=int(frequency_mhz * 1e6))
+
+    def update_channel(self, channel: Channel):
+        """Sets a given channel's info only if the info has changed."""
+        if self.get_channel_info(channel.index) == channel:
+            self.set_channel_info(channel)
+
+    def clear_channel(self, index: int):
+        """Deletes a given channel if it currently has a name and frequency."""
+        channel = self.get_channel_info(index)
+        if channel.name or channel.frequency:
+            self.delete_channel(index)
