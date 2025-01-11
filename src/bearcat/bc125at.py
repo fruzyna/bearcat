@@ -947,8 +947,7 @@ class BC125AT:
             keys: desired keys to press in sequence
         """
         for k in keys:
-            if not self.press_key(k):
-                raise UnexpectedResultError(f'Failed to send key press {k}')
+            self.press_key(k)
 
     def long_press_key(self, key: str):
         """
