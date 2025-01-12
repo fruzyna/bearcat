@@ -1001,7 +1001,7 @@ class BC125AT:
 
     def update_channel(self, channel: Channel):
         """Sets a given channel's info only if the info has changed."""
-        if self.get_channel_info(channel.index) == channel:
+        if self.get_channel_info(channel.index) != channel:
             self.set_channel_info(channel)
 
     def clear_channel(self, index: int):
