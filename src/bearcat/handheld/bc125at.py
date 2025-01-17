@@ -151,7 +151,7 @@ class BC125AT(BearcatCommon, BearcatHandheld):
         def __str__(self) -> str:
             locked = 'Locked' if self.lockout else 'Unlocked'
             priority = ' Priority' if self.priority else ''
-            return f'{super().__str__()} {self.delay.value} s {locked}{priority}'
+            return f'{super().__str__()} {self.delay.value}s {locked}{priority}'
 
         def __eq__(self, other) -> bool:
             return self.name == other.name and self.frequency == other.frequency and \

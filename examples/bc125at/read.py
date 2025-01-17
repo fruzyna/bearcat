@@ -3,6 +3,7 @@ from sys import argv
 
 from bearcat.handheld.bc125at import BC125AT
 
+
 CHANNEL_FILE = 'backup.csv'
 
 assert len(argv) > 1, "Script requires one argument, the address of the scanner."

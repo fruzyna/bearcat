@@ -13,6 +13,7 @@ from sounddevice import Stream, query_devices
 
 from bearcat.handheld.bc125at import BC125AT
 
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
