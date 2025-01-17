@@ -1,13 +1,17 @@
 """Attempts all possible commands to find which commands are supported by the BC125AT."""
-from bearcat import CommandNotFound, CommandInvalid, UnexpectedResultError
-from bearcat.bc125at import BC125AT
-
+from sys import argv
 from itertools import product
 from string import ascii_uppercase
 
+from bearcat import CommandNotFound, CommandInvalid, UnexpectedResultError
+from bearcat.handheld.bc125at import BC125AT
+
+
 CHANNEL_FILE = 'backup.csv'
 
-bc = BC125AT('/dev/ttyACM0')
+assert len(argv) > 1, "Script requires one argument, the address of the scanner."
+
+bc = BC125AT(argv[1])
 
 # attempt every command possible from AAA to ZZZ
 for x in range(3, 4):

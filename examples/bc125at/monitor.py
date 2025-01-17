@@ -1,9 +1,10 @@
 """Monitors a BC125AT scanner. Emulates the screen in the console and logs received transmissions to file."""
-from bearcat.bc125at import BC125AT
-
 import signal
+from sys import argv
 from time import sleep
 from datetime import datetime
+
+from bearcat.handheld.bc125at import BC125AT
 
 LOG_FILE = 'log.csv'
 
@@ -17,7 +18,9 @@ def exit_gracefully(_, __):
     running = False
 
 
-bc = BC125AT('/dev/ttyACM0')
+assert len(argv) > 1, "Script requires one argument, the address of the scanner."
+
+bc = BC125AT(argv[1])
 
 signal.signal(signal.SIGINT, exit_gracefully)
 
@@ -48,6 +51,3 @@ while running:
         receiving = None
 
     sleep(0.001)
-
-bc.power_off()
-print('Powered Off')
