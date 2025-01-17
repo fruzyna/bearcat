@@ -17,7 +17,7 @@ Below is an example of creating a connection to a BC125AT scanner and getting it
 There are several included example scripts in `/examples`.
 
 ```python
-from src.bearcat import BC125AT
+from src.handheld.bearcat import BC125AT
 
 bc = BC125AT('/dev/ttyACM0')
 screen, squelch, mute = bc.get_status()
