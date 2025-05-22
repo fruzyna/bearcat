@@ -102,6 +102,56 @@ class Screen:
         return '\n'.join([str(l) for l in self.lines])
 
 
+class RadioState:
+    """Object representation of radio state returned by both GLG and CIN commands."""
+
+    def __init__(self, index=-1, name='', frequency=0, modulation=Modulation.NFM, tone_code=0):
+        """
+        Args:
+            index: channel number (1 - 500)
+            name: name of the selected channel, may be blank, must be <= 16 characters
+            frequency: channel frequency in Hz
+            modulation: modulation type
+            tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
+        """
+        self.index = index
+        self.name = name
+        self.frequency = frequency
+        self.modulation = modulation
+        self.tone_code = tone_code
+
+    def __str__(self) -> str:
+        return f'{self.index}: "{self.name}" {self.frequency / 1e6} MHz {self.modulation.value} {self.tone_code}'
+
+
+class Channel(RadioState):
+    """Object representation of radio state used with CIN command."""
+
+    def __init__(self, index=-1, name='', frequency=0, modulation=Modulation.NFM, tone_code=0, delay=DelayTime.TWO,
+                 lockout=True, priority=False):
+        """
+        Args:
+            index: channel number (1-500)
+            name: name of the selected channel, may be blank, must be <= 16 characters
+            frequency: channel frequency in Hz
+            modulation: modulation type
+            tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
+            delay: optional delay, default TWO
+            lockout: optional channel lockout (removal from scan), default True
+            priority: optional channel priority (one per bank), default False
+        """
+        super().__init__(index, name, frequency, modulation, tone_code)
+        self.index = index
+        self.delay = delay
+        self.lockout = lockout
+        self.priority = priority
+
+    def __str__(self) -> str:
+        locked = 'Locked' if self.lockout else 'Unlocked'
+        priority = ' Priority' if self.priority else ''
+        return f'{super().__str__()} {self.delay.value}s {locked}{priority}'
+
+
 class BearcatBase(metaclass=abc.ABCMeta):
     """Base object that represents core functionality and API calls for Uniden Bearcat scanners."""
 

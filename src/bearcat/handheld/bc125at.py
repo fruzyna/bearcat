@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Tuple, List
 
-from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, OperationMode, BearcatCommon
+from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, OperationMode
 from bearcat.handheld import BearcatHandheld
 
 
@@ -72,91 +72,10 @@ class BC125AT(BearcatCommon, BearcatHandheld):
         WEATHER_ALERT = '3'
         KEYPAD = '4'
 
-    class RadioState:
-        """Object representation of radio state returned by both GLG and CIN commands."""
-
-        def __init__(self, index: int, name: str, frequency: int, modulation: Modulation, tone=0, tone_code=0):
-            """
-            Args:
-                index: channel number (1 - 500)
-                name: name of the selected channel, may be blank, must be <= 16 characters
-                frequency: channel frequency in Hz
-                modulation: modulation type
-                tone: optional CTCSS tone in hertz or DSC code, if tone is 0 (default), tone_code is used instead
-                tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
-            """
-            assert 0 < index <= BC125AT.TOTAL_CHANNELS or index == -1, f'Invalid channel number, {index}'
-            self.index = index
-            assert len(name) <= BC125AT.DISPLAY_WIDTH, f'Name too long, "{name}"'
-            self.name = name
-            assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ or frequency == 0,\
-                f'Invalid frequency, {frequency}'
-            self.frequency = frequency
-            self.modulation = modulation
-            if tone:
-                assert tone in BC125AT.TONE_MAP
-                self.tone_code = BC125AT.TONE_MAP[tone]
-            else:
-                self.tone_code = tone_code
-
-        @classmethod
-        def from_glg_response(cls, frequency: str, modulation: str, attenuation: str, tone_code: str, search_name: str,
-                              group_name: str, channel_name: str, squelched: str, muted: str, _: str, index: str,
-                              __: str) -> 'BC125AT.RadioState':
-            """Alternative constructor, designed to take the response to the GLG command."""
-            number = int(index) if index else -1
-            return cls(number, channel_name, int(frequency) * BC125AT.FREQUENCY_SCALE, Modulation(modulation),
-                       tone_code=int(tone_code))
-
-        def __str__(self) -> str:
-            return f'{self.index}: "{self.name}" {self.frequency / 1e6} MHz {self.modulation.value} {self.tone_code}'
-
-    class Channel(RadioState):
-        """Object representation of radio state used with CIN command."""
-
-        def __init__(self, index: int, name: str, frequency: int, modulation: Modulation, tone=0, tone_code=0,
-                     delay=DelayTime.TWO, lockout=True, priority=False):
-            """
-            Args:
-                index: channel number (1-500)
-                name: name of the selected channel, may be blank, must be <= 16 characters
-                frequency: channel frequency in Hz
-                modulation: modulation type
-                tone: optional CTCSS tone in hertz or DSC code, if tone is 0 (default), tone_code is used instead
-                tone_code: optional CTCSS/DCS code identifier, see TONE_MAP values
-                delay: optional delay, default TWO
-                lockout: optional channel lockout (removal from scan), default True
-                priority: optional channel priority (one per bank), default False
-            """
-            super().__init__(index, name, frequency, modulation, tone, tone_code)
-            self.index = index
-            self.delay = delay
-            self.lockout = lockout
-            self.priority = priority
-
-        @classmethod
-        def from_cin_response(cls, index: str, name: str, frequency: str, modulation: str, tone_code: str, delay: str,
-                              lockout: str, priority: str) -> 'BC125AT.Channel':
-            """Alternative constructor, designed to take the response to the CIN command."""
-            return cls(int(index), name, int(frequency) * BC125AT.FREQUENCY_SCALE, Modulation(modulation),
-                       tone_code=int(tone_code), delay=DelayTime(delay), lockout=bool(int(lockout)),
-                       priority=bool(int(priority)))
-
-        def to_response(self) -> List[str]:
-            """Generates a list of parameters from the channel for the CIN command."""
-            return [str(self.index), self.name, str(int(self.frequency / BC125AT.FREQUENCY_SCALE)),
-                    self.modulation.value, str(self.tone_code), self.delay.value, str(int(self.lockout)),
-                    str(int(self.priority))]
-
-        def __str__(self) -> str:
-            locked = 'Locked' if self.lockout else 'Unlocked'
-            priority = ' Priority' if self.priority else ''
-            return f'{super().__str__()} {self.delay.value}s {locked}{priority}'
-
-        def __eq__(self, other) -> bool:
-            return self.name == other.name and self.frequency == other.frequency and \
-                self.modulation == other.modulation and self.tone_code == other.tone_code and \
-                self.delay == other.delay and self.lockout == other.lockout and self.priority == other.priority
+    @staticmethod
+    def compare_channels(a: Channel, b: Channel) -> bool:
+        return a.name == b.name and a.frequency == b.frequency and  a.modulation == b.modulation and \
+            a.tone_code == b.tone_code and a.delay == b.delay and a.lockout == b.lockout and a.priority == b.priority
 
     #
     # Getters
@@ -185,7 +104,9 @@ class BC125AT(BearcatCommon, BearcatHandheld):
         """
         response = self._execute_command('GLG')
         self._check_response(response, 12)
-        return BC125AT.RadioState.from_glg_response(*response), bool(int(response[7])), bool(int(response[8]))
+        state = RadioState(response[9], response[6], int(response[0]) * BC125AT.FREQUENCY_SCALE,
+                           Modulation(response[1]), int(response[3]))
+        return state, bool(int(response[7])), bool(int(response[8]))
 
     def get_electronic_serial_number(self) -> Tuple[str, str, str]:
         """
@@ -293,7 +214,9 @@ class BC125AT(BearcatCommon, BearcatHandheld):
         assert 1 <= channel <= BC125AT.TOTAL_CHANNELS
         response = self._execute_program_mode_command('CIN', str(channel))
         self._check_response(response, 8)
-        return BC125AT.Channel.from_cin_response(*response)
+        return Channel(int(response[0]), response[1], int(response[2]) * BC125AT.FREQUENCY_SCALE,
+                       Modulation(response[3]), int(response[4]), delay=DelayTime(response[5]),
+                       lockout=bool(int(response[6])), priority=bool(int(response[7])))
 
     def get_search_close_call_settings(self) -> Tuple[DelayTime, bool]:
         """
@@ -462,7 +385,10 @@ class BC125AT(BearcatCommon, BearcatHandheld):
         Args:
             channel: object representation of the desired channel parameters
         """
-        self._check_ok(self._execute_program_mode_command('CIN', *channel.to_response()))
+        freq = int(self.frequency / BC125AT.FREQUENCY_SCALE)
+        self._check_ok(self._execute_program_mode_command('CIN', str(self.index), self.name, str(freq),
+                    self.modulation.value, str(self.tone_code), self.delay.value, str(int(self.lockout)),
+                    str(int(self.priority))))
 
     def set_search_close_call_settings(self, delay: DelayTime, code_search: bool):
         """
@@ -548,7 +474,7 @@ class BC125AT(BearcatCommon, BearcatHandheld):
 
     def update_channel(self, channel: Channel):
         """Sets a given channel's info only if the info has changed."""
-        if self.get_channel_info(channel.index) != channel:
+        if not BC125AT.compare_channels(self.get_channel_info(channel.index), channel):
             self.set_channel_info(channel)
 
     def clear_channel(self, index: int):
