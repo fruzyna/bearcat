@@ -2,11 +2,11 @@
 from enum import Enum
 from typing import Tuple, List
 
-from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, OperationMode
+from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, OperationMode, BearcatCommonContrast
 from bearcat.handheld import BearcatHandheld
 
 
-class BC125AT(BearcatCommon, BearcatHandheld):
+class BC125AT(BearcatCommonContrast, BearcatHandheld):
     """
     Object for interacting with the Uniden BC125AT serial API. All official and many known unofficial calls are
     supported. See https://info.uniden.com/twiki/pub/UnidenMan4/BC125AT/BC125AT_PC_Protocol_V1.01.pdf for official API.

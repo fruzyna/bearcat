@@ -516,19 +516,6 @@ class BearcatCommon(BearcatBase, metaclass=abc.ABCMeta):
         return int(response[0]) / self.AD_SCALING_FACTOR, int(response[1]) * self.FREQUENCY_SCALE
 
     #
-    # Program Mode Getters
-    #
-
-    def get_contrast(self) -> str:
-        """
-        Sends the get contrast (CNT) command. Requires program mode.
-
-        Returns:
-            display contrast level, 0 - 15
-        """
-        return self._get_program_mode_string('CNT')
-
-    #
     # Setters
     #
 
@@ -565,16 +552,6 @@ class BearcatCommon(BearcatBase, metaclass=abc.ABCMeta):
         """
         assert 1 <= channel <= self.TOTAL_CHANNELS
         self._set_program_mode_value('DCH', channel)
-
-    def set_contrast(self, level: int):
-        """
-        Sends the set contrast (CNT) command. Requires program mode.
-
-        Args:
-            level: desired contrast level, 0 - 15
-        """
-        assert 0 <= level <= 15, f'Unexpected contrast level {level}, expected 0 - 15'
-        self._set_program_mode_value('CNT', level)
 
     #
     # Key Pushers
@@ -638,3 +615,34 @@ class BearcatCommon(BearcatBase, metaclass=abc.ABCMeta):
             key: desired key to release
         """
         self._key_action(key, KeyAction.RELEASE)
+
+
+class BearcatCommonContrast(BearcatCommon, metaclass=abc.ABCMeta):
+    """Object that extends BearcatCommon to add contrast which is available to nearly all scanners."""
+
+    #
+    # Program Mode Getters
+    #
+
+    def get_contrast(self) -> str:
+        """
+        Sends the get contrast (CNT) command. Requires program mode.
+
+        Returns:
+            display contrast level, 0 - 15
+        """
+        return self._get_program_mode_string('CNT')
+
+    #
+    # Program Mode Setters
+    #
+
+    def set_contrast(self, level: int):
+        """
+        Sends the set contrast (CNT) command. Requires program mode.
+
+        Args:
+            level: desired contrast level, 0 - 15
+        """
+        assert 0 <= level <= 15, f'Unexpected contrast level {level}, expected 0 - 15'
+        self._set_program_mode_value('CNT', level)
