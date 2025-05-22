@@ -4,14 +4,14 @@ from itertools import product
 from string import ascii_uppercase
 
 from bearcat import CommandNotFound, CommandInvalid, UnexpectedResultError
-from bearcat.handheld.bc125at import BC125AT
+from bearcat import BearcatBase
 
 
 CHANNEL_FILE = 'backup.csv'
 
 assert len(argv) > 1, "Script requires one argument, the address of the scanner."
 
-bc = BC125AT(argv[1])
+bc = BearcatBase(argv[1], int(argv[2]) if len(argv) > 2 else 115200)
 
 # attempt every command possible from AAA to ZZZ
 for x in range(3, 4):

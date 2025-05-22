@@ -4,7 +4,7 @@ from sys import argv
 from time import sleep
 from datetime import datetime
 
-from bearcat.handheld.bc125at import BC125AT
+from bearcat import find_scanners, detect_scanner
 
 LOG_FILE = 'log.csv'
 
@@ -18,9 +18,16 @@ def exit_gracefully(_, __):
     running = False
 
 
-assert len(argv) > 1, "Script requires one argument, the address of the scanner."
-
-bc = BC125AT(argv[1])
+# find a scanner either from a given address or scanning
+if len(argv) > 1:
+    bc = detect_scanner(argv[1])
+else:
+    scanners = find_scanners()
+    if len(scanners) == 0:
+        print('No scanners found')
+        exit(1)
+    else:
+        bc = scanners[0]
 
 signal.signal(signal.SIGINT, exit_gracefully)
 

@@ -11,7 +11,7 @@ from soundfile import SoundFile
 from time import sleep, monotonic
 from sounddevice import Stream, query_devices
 
-from bearcat.handheld.bc125at import BC125AT
+from bearcat import RadioState, find_scanners, detect_scanner
 
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -34,7 +34,7 @@ assert len(argv) > 1, "Script requires one argument, the address of the scanner.
 class Recording:
     """Object representing a recording."""
 
-    def __init__(self, radio_state: BC125AT.RadioState):
+    def __init__(self, radio_state: RadioState):
         self.audio_buffer = []
         self.radio_state = radio_state
         self.started_at = datetime.now()
@@ -129,8 +129,13 @@ stream = Stream(samplerate=SAMPLE_RATE, blocksize=BLOCK_SIZE, device=(in_device,
 stream.start()
 print('Audio stream started')
 
-bc = BC125AT(argv[1])
-print('BC125AT started')
+# find a scanner
+bcs = find_scanners()
+if len(bcs) == 0:
+    print('No scanners found')
+    exit(1)
+else:
+    bc = bcs[0]
 
 signal.signal(signal.SIGINT, exit_gracefully)
 

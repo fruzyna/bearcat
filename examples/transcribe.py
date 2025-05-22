@@ -3,7 +3,6 @@ import signal
 #import whisper
 import warnings
 import numpy as np
-from sys import argv
 from typing import List
 from pathlib import Path
 from threading import Thread
@@ -12,7 +11,7 @@ from soundfile import SoundFile
 from time import sleep, monotonic
 from sounddevice import Stream, query_devices
 
-from bearcat.handheld.bc125at import BC125AT
+from bearcat import RadioState, find_scanners, detect_scanner
 
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -21,32 +20,30 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 RECORDING_DIR = Path('/home/liam/bearcat/recordings')
 LOG_DIR = Path('/home/liam/bearcat/logs')
 
-SAMPLE_RATE_HZ = 44100
+SAMPLE_RATE_HZ = 48000
 BLOCK_SIZE_S = 0.1
 NUM_STREAMS = 4
-ALLOWED_GAP = 5
+ALLOWED_GAP = 4
 DTYPE = np.float32
 MONITOR = True
 
 BLOCK_SIZE = int(SAMPLE_RATE_HZ * BLOCK_SIZE_S // NUM_STREAMS * NUM_STREAMS)
 
-assert len(argv) > 1, "Script requires one argument, the address of the scanner."
-
 
 class Recorder:
 
-    def __init__(self, channel: int, state: BC125AT.RadioState):
-        self.index = channel
+    def __init__(self, channel: int, state: RadioState):
+        self.radio_index = channel
         self.radio_state = state
         self.buffer = np.array([], dtype=DTYPE)
         self.start_time = datetime.now()
         self.stopped_at = 0
-        print(f'starting {self.index}: {self.short_state}')
+        print(f'starting {self.radio_index}: {self.short_state}')
 
     def add_samples(self, samples):
-        self.buffer = np.concatenate((self.buffer, samples[:, self.index].copy()))
+        self.buffer = np.concatenate((self.buffer, samples[:, self.radio_index].copy()))
 
-    def compare_state(self, state: BC125AT.RadioState) -> bool:
+    def compare_state(self, state: RadioState) -> bool:
         return state.frequency == self.radio_state.frequency
 
     @property
@@ -77,11 +74,11 @@ class Recorder:
         return f"{self.radio_state.frequency / 1e6} {self.radio_state.name}"
 
     def stop(self):
-        print(f'stopping {self.index}: {self.short_state}')
+        print(f'stopping {self.radio_index}: {self.short_state}')
         self.stopped_at = len(self.buffer)
 
     def resume(self):
-        print(f'resuming {self.index}: {self.short_state}')
+        print(f'resuming {self.radio_index}: {self.short_state}')
         self.stopped_at = 0
 
 
@@ -98,22 +95,27 @@ def audio_handler(in_data, out_data, __, ___, ____):
     if MONITOR:
         out_data[:] = np.mean(in_data, 1, keepdims=True) * len(squelched)
 
-    recs = {r.index:r for r in recorders if r.is_recording}
+    recs = {}
+    for r in recorders:
+        if r.is_recording and r.radio_index not in recs:
+            recs[r.radio_index] = r
+
     for i, sq in enumerate(squelched):
-        if i in recs and (not sq or recs[i].compare_state(sq)):
-            rec = recs[i]
-            rec.add_samples(in_data)
-            if not sq and not rec.is_stopped:
-                rec.stop()
-            elif sq and rec.is_stopped:
-                rec.resume()
-        elif sq:
-            if i in recs:
+        if sq and (i not in recs or not recs[i].compare_state(sq)):
+            if i in recs and not recs[i].is_stopped:
                 recs[i].stop()
 
             rec = Recorder(i, sq)
             rec.add_samples(in_data)
-            recorders.append(rec)
+            recorders.insert(0, rec)
+        else:
+            if sq and i in recs and recs[i].compare_state(sq) and recs[i].is_stopped:
+                recs[i].resume()
+            elif not sq and i in recs and not recs[i].is_stopped:
+                recs[i].stop()
+
+            if i in recs and recs[i].is_recording:
+                recs[i].add_samples(in_data)
 
 
 def process_thread():
@@ -125,16 +127,16 @@ def process_thread():
     while running:
         completed = [i for i, rec in enumerate(recorders) if not rec.is_recording]
         if completed:
-            rec = recorders.pop(completed[0])
+            rec = recorders.pop(completed[-1])
             print(f'Recorded for {rec.duration}s')
             name = RECORDING_DIR / rec.name
 
-            if rec.duration >= 0.3:
+            text = ''
+            if rec.duration >= 1.0:
                 with SoundFile(name, mode='w', samplerate=SAMPLE_RATE_HZ, channels=1) as f:
                     f.write(rec.audio)
 
                 print(f'Saved recording {name}, transcribing...')
-                text = ''
                 # try:
                 #     transcription_start = monotonic()
                 #     transcription = model.transcribe(str(name), initial_prompt='')
@@ -164,9 +166,9 @@ def process_thread():
                 # except RuntimeError:
                 #     print('RuntimeError transcribing')
 
-                with open(LOG_DIR / f"{rec.start_time.strftime('%Y-%m-%d')}.csv", 'a') as f:
-                    f.write(f'{rec.start_time},{round(rec.duration, 1)},{rec.radio_state.name},{rec.radio_state.frequency},{rec.radio_state.modulation.value},{rec.radio_state.tone_code},"{text}"\n')
-                    print('Wrote to log')
+            with open(LOG_DIR / f"{rec.start_time.strftime('%Y-%m-%d')}.csv", 'a') as f:
+                f.write(f'{rec.start_time},{round(rec.duration, 1)},{rec.radio_state.name},{rec.radio_state.frequency},{rec.radio_state.modulation.value},{rec.radio_state.tone_code},"{text}"\n')
+                print('Wrote to log')
 
         sleep(0.1)
 
@@ -185,8 +187,11 @@ print('Audio stream started')
 #model = whisper.load_model('turbo')
 #print('Whisper model loaded')
 
-bcs = [BC125AT(argv[1])]
-print('BC125AT started')
+# find a scanner
+bcs = find_scanners()
+if len(bcs) == 0:
+    print('No scanners found')
+    exit(1)
 
 signal.signal(signal.SIGINT, exit_gracefully)
 

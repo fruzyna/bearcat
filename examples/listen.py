@@ -27,7 +27,6 @@ def handle_audio(in_data, out_data, __, ___, ____):
     out_data[:] = in_data[:, 0:1]
 
 
-
 print(query_devices())
 in_device = int(input('Desired input device: '))
 out_device = int(input('Desired output device: '))
