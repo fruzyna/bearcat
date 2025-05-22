@@ -3,10 +3,10 @@ from enum import Enum
 from typing import Tuple, List
 
 from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, OperationMode, BearcatCommonContrast
-from bearcat.handheld import BearcatHandheld
+from bearcat.handheld import BasicHandheld
 
 
-class BC125AT(BearcatCommonContrast, BearcatHandheld):
+class BC125AT(BearcatCommonContrast, BasicHandheld):
     """
     Object for interacting with the Uniden BC125AT serial API. All official and many known unofficial calls are
     supported. See https://info.uniden.com/twiki/pub/UnidenMan4/BC125AT/BC125AT_PC_Protocol_V1.01.pdf for official API.
@@ -15,18 +15,7 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
     AD_SCALING_FACTOR = 255
     TOTAL_CHANNELS = 500
     DISPLAY_WIDTH = 16
-    FREQUENCY_SCALE = 100
-    MIN_FREQUENCY_HZ = int(25e6)
-    MAX_FREQUENCY_HZ = int(512e6)
-    BAUD_RATES = [4800, 9600, 19200, 38400, 57600, 115200]
-    AVAILABLE_KEYS = [
-        '<', '^', '>',
-        'H', '1', '2', '3',
-        'S', '4', '5', '6',
-        'R', '7', '8', '9',
-        'L', 'E', '0', '.',
-        'P', 'F'
-    ]
+    BAUD_RATES = [115200]
     BYTE_MAP = {
         0x80: b'\xe2\x96\x88', 0x81: b'\xe2\x86\x91', 0x82: b'\xe2\x86\x93', 0x83: b'Lo', 0x84: b'Bat', 0x85: b'Lo',
         0x86: b'ck', 0x87: b'C', 0x88: b'C', 0x89: b'C', 0x8A: b'C', 0x8B: b'\xf0\x9f\x84\xb5',
@@ -50,13 +39,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         KEYPRESS = 'KY'
         SQUELCH = 'SQ'
         KEYPRESS_SQUELCH = 'KS'
-
-    class PriorityMode(Enum):
-        """Enumeration of priority modes supported by the BC125AT."""
-        OFF = '0'
-        ON = '1'
-        PLUS = '2'
-        DND = '3'
 
     class CloseCallMode(Enum):
         """Enumeration of close call modes supported by the BC125AT."""
@@ -122,24 +104,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         self._check_response(response, 3)
         return response[0], response[1], response[2]
 
-    def memory_read(self, location: int) -> Tuple[List[int], int]:
-        """
-        Sends the memory read (MRD) command. This appears to be an unofficial and undocumented command for all
-        scanners. There is a corresponding memory write (MWR) command that I am too afraid to investigate right now.
-
-        Args:
-            32-bit value, likely register number
-
-        Returns:
-            16 bytes likely starting at the given memory location
-            32-bit value
-        """
-        assert 0 <= location <= 0xFFFFFFFF
-        response = self._execute_command('MRD', str(location))
-        self._check_response(response, 18)
-        assert int(response[0], 16) == location
-        return [int(b, 16) for b in response[1:17]], int(response[17], 16)
-
     #
     # Program Mode Getters
     #
@@ -162,15 +126,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         """
         return self._get_program_mode_number('BSV')
 
-    def get_band_plan(self) -> bool:
-        """
-        Sends the get band plan (BPL) command. Requires program mode.
-
-        Returns:
-            whether the Canadian (True) or American (False) band plan is selected
-        """
-        return bool(self._get_program_mode_number('BPL'))
-
     def get_key_beep(self) -> Tuple[bool, bool]:
         """
         Sends the get key beep (KBP) command. Requires program mode.
@@ -182,24 +137,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         response = self._execute_program_mode_command('KBP')
         self._check_response(response, 2)
         return not bool(int(response[0])), bool(int(response[1]))
-
-    def get_priority_mode(self) -> PriorityMode:
-        """
-        Sends the get priority mode (PRI) command. Requires program mode.
-
-        Returns:
-            priority mode as an enumeration
-        """
-        return BC125AT.PriorityMode(self._get_program_mode_number('PRI'))
-
-    def get_scan_channel_group(self) -> List[bool]:
-        """
-        Sends the get scan channel group (SCG) command. Requires program mode.
-
-        Returns:
-            a list of 10 bools representing whether scanning is enabled for each of the 10 channel groups
-        """
-        return self._get_program_mode_group('SCG')
 
     def get_channel_info(self, channel: int) -> Channel:
         """
@@ -255,20 +192,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         """
         return self._get_program_mode_group('SSG')
 
-    def get_custom_search_settings(self, group: int) -> Tuple[int, int, int]:
-        """
-        Sends the get custom search settings (CSP) command. Requires program mode.
-
-        Returns:
-            search group number, 1 - 10
-            search upper limit in Hz
-            search lower limit in Hz
-        """
-        assert 1 <= group <= 10
-        response = self._execute_program_mode_command('CSP', str(group))
-        self._check_response(response, 3)
-        return int(response[0]), int(response[1]) * BC125AT.FREQUENCY_SCALE, int(response[2]) * BC125AT.FREQUENCY_SCALE
-
     def get_weather_priority(self) -> bool:
         """
         Sends the get weather settings (WXS) command. Requires program mode.
@@ -281,19 +204,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
     #
     # Setters
     #
-
-    def go_to_quick_search_hold_mode(self, frequency: int, delay=DelayTime.TWO):
-        """
-        Go to quick search hold mode (QSH) command. This is an unofficial command for the BC125AT.
-
-        Args:
-            frequency: channel frequency in Hz
-            delay: optional delay, default TWO
-        """
-        assert BC125AT.MIN_FREQUENCY_HZ <= frequency <= BC125AT.MAX_FREQUENCY_HZ,\
-            f'Unexpected frequency {frequency}, expected {BC125AT.MIN_FREQUENCY_HZ} - {BC125AT.MAX_FREQUENCY_HZ}'
-        self._check_ok(self._execute_command('QSH', str(int(frequency / self.FREQUENCY_SCALE)), '', '', '', '',
-                                             delay.value, '', '', '', '', '', '', ''))
 
     def jump_to_channel(self, channel: int):
         """
@@ -331,15 +241,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         """
         self._set_program_mode_value('BLT', mode.value)
 
-    def set_band_plan(self, canada: bool):
-        """
-        Sends the set band plan (BPL) command. Requires program mode.
-
-        Args:
-            canada: whether Canadian (True) or American (False) band plan should be used
-        """
-        self._set_program_mode_value('BPL', int(canada))
-
     def set_charge_time(self, time: int):
         """
         Sends the set battery setting (BSV) command. Requires program mode despite manual not listing that.
@@ -359,24 +260,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
             lock: whether keypad lock should be enabled
         """
         self._check_ok(self._execute_program_mode_command('KBP', str(int(not enabled) * 99), str(int(lock))))
-
-    def set_priority_mode(self, mode: PriorityMode):
-        """
-        Sends the set priority mode (PRI) command. Requires program mode.
-
-        Args:
-            mode: enumeration of the desired priority
-        """
-        self._set_program_mode_value('PRI', mode.value)
-
-    def set_scan_channel_group(self, states: List[bool]):
-        """
-        Sends the set scan channel group (SCG) command. Requires program mode.
-
-        Args:
-            states: list of 10 bools representing which of the 10 channel groups should have scanning enabled
-        """
-        self._set_program_mode_group('SCG', states)
 
     def set_channel_info(self, channel: Channel):
         """
@@ -427,24 +310,6 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
         """
         self._set_program_mode_group('SSG', states)
 
-    def set_custom_search_settings(self, index: int, lower_limit: int, upper_limit: int):
-        """
-        Sends the set custom search settings (CSP) command. Requires program mode.
-
-        Args:
-            index: custom search number
-            lower_limit: desired custom search lower frequency limit in Hz
-            upper_limit: desired custom search upper frequency limit in Hz
-        """
-        assert 1 <= index <= 10, f'Unexpected search index {index}, expected 1 - 10'
-        assert BC125AT.MIN_FREQUENCY_HZ <= lower_limit <= BC125AT.MAX_FREQUENCY_HZ,\
-            f'Unexpected lower limit {lower_limit}, expected 25 - 512 MHz'
-        assert BC125AT.MIN_FREQUENCY_HZ <= upper_limit <= BC125AT.MAX_FREQUENCY_HZ,\
-            f'Unexpected upper limit {upper_limit}, expected 25 - 512 MHz'
-        self._check_ok(self._execute_program_mode_command('CSP', str(index),
-                                                          str(lower_limit // BC125AT.FREQUENCY_SCALE),
-                                                          str(upper_limit // BC125AT.FREQUENCY_SCALE)))
-
     def set_weather_priority(self, on: bool):
         """
         Sends the set weather settings (WXS) command. Requires program mode.
@@ -458,19 +323,9 @@ class BC125AT(BearcatCommonContrast, BearcatHandheld):
     # Combo Commands
     #
 
-    def scan_groups(self, *groups: int):
-        """Applies a set of scan channel groups and switches to scan mode."""
-        band_selection = [i + 1 not in groups for i in range(10)]
-        self.set_scan_channel_group(band_selection)
-        self.jump_mode(OperationMode.SCAN)
-
     def channel(self, channel: int):
         """Shortcut to jump to a given channel."""
         self.jump_to_channel(channel)
-
-    def frequency(self, frequency_mhz: float):
-        """Shortcut to jump to a given frequency."""
-        self.go_to_quick_search_hold_mode(frequency=int(frequency_mhz * 1e6))
 
     def update_channel(self, channel: Channel):
         """Sets a given channel's info only if the info has changed."""

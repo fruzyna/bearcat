@@ -219,7 +219,7 @@ class BearcatBase(metaclass=abc.ABCMeta):
         self._cmd_lock = Lock()
 
     def listen(self, address='127.0.0.1', port=65125):
-        """Creates a server socket for other BC125AT instances to send their bytes to."""
+        """Creates a server socket for other instances to send their bytes to."""
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((address, port))
         s.listen()
@@ -398,7 +398,7 @@ class BearcatBase(metaclass=abc.ABCMeta):
         Sends the get model (MDL) command.
 
         Returns:
-            scanner's model number (BC125AT)
+            scanner's model number
         """
         return self._get_string('MDL')
 
@@ -504,7 +504,7 @@ class BearcatCommon(BearcatBase, metaclass=abc.ABCMeta):
 
     def get_window_voltage(self) -> Tuple[float, float]:
         """
-        Sends the get window voltage (WIN) command. This is an unofficial command for the BC125AT.
+        Sends the get window voltage (WIN) command. This is an unofficial command for many scanners.
 
         Returns:
             window potential as a percent of the A/D value, 0 - 1
@@ -559,7 +559,7 @@ class BearcatCommon(BearcatBase, metaclass=abc.ABCMeta):
 
     def _key_action(self, key: str, action: KeyAction):
         """
-        Sends the key (KEY) command. This is an unofficial command for the BC125AT.
+        Sends the key (KEY) command. This is an unofficial command for many scanners.
 
         Args:
             key: desired key to press
