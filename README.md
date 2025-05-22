@@ -2,8 +2,12 @@
 
 Python library for communicating with Uniden Bearcat scanners.
 
-Currently, this library only contains an implementation of the BC125AT serial API.
+Currently, this library implementation the following scanner's serial APIs.
 Ideally as I acquire more scanners, this library will grow to incorporate those.
+Go to the [Scanners with Serial Interface Docs](https://github.com/fruzyna/bearcat/wiki/Scanners-with-Serial-Interface-Docs) wiki page for more details on these scanners.
+- BC125AT
+- BC75XLT
+
 
 ## Official API Docs
 
