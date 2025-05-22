@@ -4,7 +4,8 @@ import socket
 import serial
 from enum import Enum
 from threading import Thread, Lock
-from typing import Union, Tuple, List
+from typing import Optional, Union, Tuple, List
+from serial.tools.list_ports import comports
 
 
 class Modulation(Enum):
@@ -162,7 +163,7 @@ class BearcatBase(metaclass=abc.ABCMeta):
     FREQUENCY_SCALE = 0
     MIN_FREQUENCY_HZ = 0
     MAX_FREQUENCY_HZ = 0
-    BAUD_RATES = []
+    BAUD_RATES = [115200, 57600, 38400, 19200, 9600, 4800]
     AVAILABLE_KEYS = []
     TONE_MAP = {
         # modes
@@ -253,7 +254,10 @@ class BearcatBase(metaclass=abc.ABCMeta):
             if b < 0x80:
                 output_bytes += bytes([b])
             else:
-                output_bytes += self.BYTE_MAP[b]
+                try:
+                    output_bytes += self.BYTE_MAP[b]
+                except:
+                    raise UnexpectedResultError(f'Invalid byte in response, {b}')
 
         return output_bytes
 
@@ -646,3 +650,52 @@ class BearcatCommonContrast(BearcatCommon, metaclass=abc.ABCMeta):
         """
         assert 0 <= level <= 15, f'Unexpected contrast level {level}, expected 0 - 15'
         self._set_program_mode_value('CNT', level)
+
+
+def find_scanners() -> List[BearcatBase]:
+    """Scans serial ports for connected scanners."""
+    scanners = []
+    ports = [p.device for p in comports() if p.description != 'n/a']
+    for port in ports:
+        scanner = detect_scanner(port)
+        if scanner:
+            scanners.append(scanner)
+
+    return scanners
+
+def detect_scanner(port: str) -> Optional[BearcatBase]:
+    """Detects a scanner on a given serial port (or IP address)."""
+    for rate in BearcatBase.BAUD_RATES:
+        try:
+            # attempt to connect to the scanner
+            bc = BearcatBase(port, rate)
+            try:
+                model = bc.get_model()
+            except CommandNotFound:
+                # command not found probably means there is garbage in the buffer, try again
+                model = bc.get_model()
+
+            version = bc.get_version()
+        except serial.SerialException as e:
+            if e.errno == 13:
+                print('Insignificant permissions for', port)
+
+            break
+        except UnexpectedResultError:
+            continue
+
+        # construct an object based on the discovered scanner
+        scanner = construct_scanner(model, port, rate)
+        if scanner:
+            print(f'Found {model} ({version}): {port} @ {rate}')
+            return scanner
+
+
+def construct_scanner(model, port, rate=115200):
+    """Constructs a scanner object based on the given model."""
+    if model == 'BC125AT':
+        from bearcat.handheld.bc125at import BC125AT
+        return BC125AT(port, rate)
+    elif model == 'BC75XLT':
+        from bearcat.handheld.bc75xlt import BC75XLT
+        return BC75XLT(port, rate)
