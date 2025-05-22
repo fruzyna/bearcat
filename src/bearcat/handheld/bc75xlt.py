@@ -221,7 +221,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
             delay: enumeration of the desired delay time
             direction_down: whether the direction is down or up
         """
-        self._check_ok(self._execute_program_mode_command('SCO', delay.value, str(int(direction_down))))
+        self._check_ok(self._execute_program_mode_command('SCO', delay.value, '', str(int(direction_down))))
 
     def set_close_call_settings(self, mode: CloseCallMode, beep: bool, light: bool, bands: List[bool]):
         """
@@ -236,7 +236,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         """
         assert len(bands) == 5, f'Unexpected bands length of {len(bands)}, expected 5'
         band_str = ''.join([str(int(b)) for b in bands])
-        self._check_ok(self._execute_program_mode_command('CLC', mode.value, str(int(beep)), str(int(light)), band_str))
+        self._check_ok(self._execute_program_mode_command('CLC', mode.value, str(int(beep)), str(int(light)), band_str, ''))
 
     #
     # Combo Commands
