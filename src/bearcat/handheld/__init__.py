@@ -3,7 +3,7 @@ import abc
 from enum import Enum
 from typing import List, Tuple
 
-from bearcat import BearcatBase, UnexpectedResultError, OperationMode, DelayTime
+from bearcat import BearcatBase, UnexpectedResultError, OperationMode
 
 
 class BearcatHandheld(BearcatBase, metaclass=abc.ABCMeta):
@@ -175,7 +175,7 @@ class BasicHandheld(BearcatHandheld, metaclass=abc.ABCMeta):
         """
         self._set_program_mode_value('PRI', mode.value)
 
-    def go_to_quick_search_hold_mode(self, frequency: int, delay=DelayTime.TWO):
+    def go_to_quick_search_hold_mode(self, frequency: int, delay=''):
         """
         Go to quick search hold mode (QSH) command. This is an unofficial command for these scanners.
 
@@ -183,10 +183,13 @@ class BasicHandheld(BearcatHandheld, metaclass=abc.ABCMeta):
             frequency: channel frequency in Hz
             delay: optional delay, default TWO
         """
+        if not isinstance(delay, self.DelayTime):
+            delay = self.DelayTime.TWO
+
         assert self.MIN_FREQUENCY_HZ <= frequency <= self.MAX_FREQUENCY_HZ,\
             f'Unexpected frequency {frequency}, expected {self.MIN_FREQUENCY_HZ} - {self.MAX_FREQUENCY_HZ}'
         self._check_ok(self._execute_command('QSH', str(int(frequency / self.FREQUENCY_SCALE)), '', '', '', '',
-                                             delay.value, '', '', '', '', '', '', ''))
+                                             delay.name, '', '', '', '', '', '', ''))
 
     def set_scan_channel_group(self, states: List[bool]):
         """

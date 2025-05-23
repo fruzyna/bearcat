@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Tuple, List
 
-from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, BearcatCommon
+from bearcat import Modulation, UnexpectedResultError, Screen, RadioState, Channel, BearcatCommon
 from bearcat.handheld import BasicHandheld
 
 
@@ -37,6 +37,11 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         OFF = '0'
         PRIORITY = '1'
         DND = '2'
+
+    class DelayTime(Enum):
+        """Enumeration of allowed delay times."""
+        ZERO = '0'
+        TWO = '1'
 
     class TestMode(Enum):
         """Enumeration of various hardware test modes available on the BC75XLT."""
@@ -132,10 +137,9 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         assert 1 <= channel <= BC75XLT.TOTAL_CHANNELS
         response = self._execute_program_mode_command('CIN', str(channel))
         self._check_response(response, 8)
-        # TODO: replace with modulation from frequency
-        return Channel(int(response[0]), response[1], int(response[2]) * BC75XLT.FREQUENCY_SCALE,
-                       Modulation.NFM, 0, DelayTime(response[5]), bool(int(response[6])),
-                       bool(int(response[7])))
+        frequency_hz = int(response[2]) * BC75XLT.FREQUENCY_SCALE
+        return Channel(int(response[0]), response[1], frequency_hz, BC75XLT.determine_modulation(frequency_hz), 0,
+                       BC75XLT.DelayTime(response[5]), bool(int(response[6])), bool(int(response[7])))
 
     def get_custom_search_group(self) -> Tuple[List[bool], DelayTime, bool]:
         """
@@ -152,7 +156,8 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         if len(response[0]) != 10:
             raise UnexpectedResultError(f'{len(response)} values returned, expected 10')
 
-        return [bool(c) for c in response[0]], DelayTime(response[1]), bool(int(response[2]))
+        print(response[0])
+        return self._parse_program_mode_group(response[0]), BC75XLT.DelayTime(response[1]), bool(int(response[2]))
 
     def get_search_close_call_settings(self) -> Tuple[DelayTime, bool]:
         """
@@ -164,7 +169,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         """
         response = self._execute_program_mode_command('SCO')
         self._check_response(response, 3)
-        return DelayTime(response[0]), bool(int(response[2]))
+        return BC75XLT.DelayTime(response[0]), bool(int(response[2]))
 
     def get_close_call_settings(self) -> Tuple[CloseCallMode, bool, bool, List[bool]]:
         """
@@ -180,7 +185,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         response = self._execute_program_mode_command('CLC')
         self._check_response(response, 5)
         return BC75XLT.CloseCallMode(response[0]), bool(int(response[1])), bool(int(response[2])),\
-            [bool(c) for c in response[3]]
+            self._parse_program_mode_group(response[3])
 
     #
     # Program Mode Setters
@@ -204,7 +209,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         """
         self._check_ok(self._execute_program_mode_command('CIN', str(channel.index), '',
                                                           str(int(channel.frequency / BC75XLT.FREQUENCY_SCALE)), '', '',
-                                                          channel.delay.value, str(int(channel.lockout)),
+                                                          channel.delay, str(int(channel.lockout)),
                                                           str(int(channel.priority))))
 
     def set_custom_search_group(self, states: List[bool], delay: DelayTime, direction_down: bool):
@@ -217,7 +222,7 @@ class BC75XLT(BearcatCommon, BasicHandheld):
             direction_down: whether the direction is down or up
         """
         assert len(states) == 10, f'Unexpected states length of {len(states)}, expected 10'
-        state_str = ''.join([str(int(b)) for b in states])
+        state_str = self._build_program_mode_group(states)
         self._check_ok(self._execute_program_mode_command('CSG', state_str, delay.value, str(int(direction_down))))
 
     def set_search_close_call_settings(self, delay: DelayTime, direction_down: bool):
@@ -263,4 +268,5 @@ class BC75XLT(BearcatCommon, BasicHandheld):
         """Deletes a given channel if it currently has a frequency."""
         channel = self.get_channel_info(index)
         if channel.frequency:
-            self.set_channel_info(Channel(channel.index, '', 0, Modulation.NFM, 0, DelayTime.ONE, True, False))
+            modulation = BC75XLT.determine_modulation(channel.frequency)
+            self.set_channel_info(Channel(channel.index, '', 0, modulation, 0, BC75XLT.DelayTime.TWO, True, False))

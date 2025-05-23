@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Tuple, List
 
-from bearcat import Modulation, DelayTime, UnexpectedResultError, Screen, RadioState, Channel, OperationMode, BearcatCommonContrast
+from bearcat import Modulation, UnexpectedResultError, Screen, RadioState, Channel, OperationMode, BearcatCommonContrast
 from bearcat.handheld import BasicHandheld
 
 
@@ -46,6 +46,17 @@ class BC125AT(BearcatCommonContrast, BasicHandheld):
         PRIORITY = '1'
         DND = '2'
         ONLY = '3'
+
+    class DelayTime(Enum):
+        """Enumeration of allowed delay times."""
+        MINUS_TEN = '-10'
+        MINUS_FIVE = '-5'
+        ZERO = '0'
+        ONE = '1'
+        TWO = '2'
+        THREE = '3'
+        FOUR = '4'
+        FIVE = '5'
 
     class TestMode(Enum):
         """Enumeration of various hardware test modes available on the BC125AT."""
@@ -152,7 +163,7 @@ class BC125AT(BearcatCommonContrast, BasicHandheld):
         response = self._execute_program_mode_command('CIN', str(channel))
         self._check_response(response, 8)
         return Channel(int(response[0]), response[1], int(response[2]) * BC125AT.FREQUENCY_SCALE,
-                       Modulation(response[3]), int(response[4]), delay=DelayTime(response[5]),
+                       Modulation(response[3]), int(response[4]), delay=BC125AT.DelayTime(response[5]),
                        lockout=bool(int(response[6])), priority=bool(int(response[7])))
 
     def get_search_close_call_settings(self) -> Tuple[DelayTime, bool]:
@@ -165,7 +176,7 @@ class BC125AT(BearcatCommonContrast, BasicHandheld):
         """
         response = self._execute_program_mode_command('SCO')
         self._check_response(response, 2)
-        return DelayTime(response[0]), bool(int(response[1]))
+        return BC125AT.DelayTime(response[0]), bool(int(response[1]))
 
     def get_close_call_settings(self) -> Tuple[CloseCallMode, bool, bool, List[bool], bool]:
         """
@@ -268,10 +279,10 @@ class BC125AT(BearcatCommonContrast, BasicHandheld):
         Args:
             channel: object representation of the desired channel parameters
         """
-        freq = int(self.frequency / BC125AT.FREQUENCY_SCALE)
-        self._check_ok(self._execute_program_mode_command('CIN', str(self.index), self.name, str(freq),
-                    self.modulation.value, str(self.tone_code), self.delay.value, str(int(self.lockout)),
-                    str(int(self.priority))))
+        freq = int(channel.frequency / BC125AT.FREQUENCY_SCALE)
+        self._check_ok(self._execute_program_mode_command('CIN', str(channel.index), channel.name, str(freq),
+                       channel.modulation.value, str(channel.tone_code), channel.delay, str(int(channel.lockout)),
+                       str(int(channel.priority))))
 
     def set_search_close_call_settings(self, delay: DelayTime, code_search: bool):
         """

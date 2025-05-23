@@ -24,18 +24,6 @@ class KeyAction(Enum):
     RELEASE = 'R'
 
 
-class DelayTime(Enum):
-    """Enumeration of allowed delay times."""
-    MINUS_TEN = '-10'
-    MINUS_FIVE = '-5'
-    ZERO = '0'
-    ONE = '1'
-    TWO = '2'
-    THREE = '3'
-    FOUR = '4'
-    FIVE = '5'
-
-
 class OperationMode(Enum):
     """Enumeration of operation modes of the scanner."""
     SCAN = 'SCN_MODE'
@@ -128,7 +116,7 @@ class RadioState:
 class Channel(RadioState):
     """Object representation of radio state used with CIN command."""
 
-    def __init__(self, index=-1, name='', frequency=0, modulation=Modulation.NFM, tone_code=0, delay=DelayTime.TWO,
+    def __init__(self, index=-1, name='', frequency=0, modulation=Modulation.NFM, tone_code=0, delay='TWO',
                  lockout=True, priority=False):
         """
         Args:
@@ -143,14 +131,17 @@ class Channel(RadioState):
         """
         super().__init__(index, name, frequency, modulation, tone_code)
         self.index = index
-        self.delay = delay
+        if isinstance(delay, Enum):
+            self.delay = delay.name
+        else:
+            self.delay = delay
         self.lockout = lockout
         self.priority = priority
 
     def __str__(self) -> str:
         locked = 'Locked' if self.lockout else 'Unlocked'
         priority = ' Priority' if self.priority else ''
-        return f'{super().__str__()} {self.delay.value}s {locked}{priority}'
+        return f'{super().__str__()} {self.delay}s {locked}{priority}'
 
 
 class BearcatBase(metaclass=abc.ABCMeta):
@@ -188,6 +179,11 @@ class BearcatBase(metaclass=abc.ABCMeta):
         732: 228, 734: 229, 743: 230, 754: 231
     }
     BYTE_MAP = {}
+
+    class DelayTime(Enum):
+        """Enumeration of allowed delay times."""
+        ZERO = '0'
+        TWO = '0'
 
     def __init__(self, port='127.0.0.1', baud_rate=115200, timeout=0.1):
         """
@@ -447,6 +443,9 @@ class BearcatBase(metaclass=abc.ABCMeta):
             a list of 10 bools representing whether search is enabled for each of the 10 custom groups
         """
         return self._get_program_mode_group('CSG')
+
+    def get_status(self) -> [Screen, bool, bool]:
+        pass
 
     #
     # Setters
