@@ -20,6 +20,7 @@ else:
 tones = list(bc.TONE_MAP.keys())
 tone_codes = list(bc.TONE_MAP.values())
 
+bc.enter_program_mode()
 with open(CHANNEL_FILE, 'w') as f:
     f.write('Group,Number,Index,Name,Secondary Name,Frequency (MHz),Tone,Modulation\n')
     for i in range(bc.TOTAL_CHANNELS):
@@ -28,3 +29,5 @@ with open(CHANNEL_FILE, 'w') as f:
             print(chan)
             tone = tones[tone_codes.index(chan.tone_code)]
             f.write(f'IMPORT,,,,,{chan.frequency / 1e6},,\n')
+
+bc.exit_program_mode()

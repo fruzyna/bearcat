@@ -8,7 +8,6 @@ Go to the [Scanners with Serial Interface Docs](https://github.com/fruzyna/bearc
 - BC125AT
 - BC75XLT
 
-
 ## Official API Docs
 
 Most Uniden scanners have an "operation specification" manual that outlines their API.
