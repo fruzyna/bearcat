@@ -52,6 +52,13 @@ class BC75XLT(BearcatCommon, BasicHandheld):
     def compare_channels(a: Channel, b: Channel) -> bool:
         return a.frequency == b.frequency and a.delay == b.delay and a.lockout == b.lockout and a.priority == b.priority
 
+    @staticmethod
+    def determine_modulation(frequency_hz):
+        if frequency_hz < 28e6 or 108 <= frequency_hz < 137:
+            return Modulation.AM
+        else:
+            return Modulation.NFM
+
     #
     # Getters
     #
@@ -241,6 +248,11 @@ class BC75XLT(BearcatCommon, BasicHandheld):
     #
     # Combo Commands
     #
+
+    def channel(self, channel: int):
+        """Shortcut to jump to a given channel."""
+        self.go_to_quick_search_hold_mode(25000000)
+        self.press_key_sequence(f'{channel}H')
 
     def update_channel(self, channel: Channel):
         """Sets a given channel's info only if the info has changed."""
