@@ -358,6 +358,10 @@ class BearcatBase(metaclass=abc.ABCMeta):
         response = self._get_program_mode_string(cmd)
         return int(response)
 
+    @staticmethod
+    def _parse_program_mode_group(states: str) -> List[bool]:
+        return [not bool(int(c)) for c in states]
+
     def _get_program_mode_group(self, cmd: str) -> List[bool]:
         """
         Sends a given command expecting a string representing a list of booleans in return, for commands that require
@@ -367,17 +371,20 @@ class BearcatBase(metaclass=abc.ABCMeta):
         if len(response) != 10:
             raise UnexpectedResultError(f'{len(response)} values returned, expected 10')
 
-        return [bool(c) for c in response]
+        return self._parse_program_mode_group(response)
 
     def _set_program_mode_value(self, cmd: str, value: Union[str, int]):
         """Sends a given command and value as a key-value pair for commands that require program mode."""
         self._check_ok(self._execute_program_mode_command(cmd, str(value)))
 
+    @staticmethod
+    def _build_program_mode_group(states: List[bool]) -> str:
+        return ''.join([str(int(not b)) for b in states])
+
     def _set_program_mode_group(self, cmd: str, states: List[bool]):
         """Sends a given command and string representing a list of booleans, for commands that require program mode."""
         assert len(states) == 10, f'Unexpected states length of {len(states)}, expected 10'
-        state_str = ''.join([str(int(b)) for b in states])
-        self._set_program_mode_value(cmd, state_str)
+        self._set_program_mode_value(cmd, self._build_program_mode_group(states))
 
     #
     # Actions
