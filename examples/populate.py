@@ -8,7 +8,7 @@ from bearcat import find_scanners, detect_scanner
 
 # filters to select channels by using the first column
 SELECT_FROM = ['NWS', 'LOCAL']
-FILE_DIR = Path('/mnt/archive/Wiki/public/scanner')
+FILE_DIR = Path('/scanner')
 
 # find a scanner either from a given address or scanning
 if len(argv) > 1:

@@ -1,0 +1,33 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/java
+{
+	"name": "WildRank",
+	"image": "mcr.microsoft.com/devcontainers/python:1-3.12",
+
+	"mounts": [
+		"source=/dev/ttyACM0,target=/dev/ttyACM0,type=bind"
+	],
+
+	"remoteEnv": {
+		"PYTHONPATH": "${containerEnv:PYTHONPATH}:/workspaces/bearcat/src"
+	},
+
+	"portsAttributes": {
+		"65125": {
+			"label": "Bearcat",
+			"onAutoForward": "notify"
+		}
+	},
+
+	"postCreateCommand": "pip3 install -r .devcontainer/requirements.txt",
+
+	"customizations": {
+		"vscode": {
+			"settings": {},
+			"extensions": [
+				"davidanson.vscode-markdownlint",
+				"streetsidesoftware.code-spell-checker"
+			]
+		}
+	}
+}
