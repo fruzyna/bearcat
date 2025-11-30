@@ -27,7 +27,7 @@ screen, squelch, mute = bc.get_status()
 print(screen)
 ```
 
-## Linux Note
+## Linux Notes
 
 In order to see the UART interface of the scanner on Linux the following command may need to be run after your PC boots.
 [More info can be found here.](https://github.com/rikus--/bc125at-perl/issues/1)
@@ -35,3 +35,8 @@ In order to see the UART interface of the scanner on Linux the following command
 ```
 echo "1965 0017 2 076d 0006" >> /sys/bus/usb/drivers/cdc_acm/new_id
 ```
+
+Once that command is run, you should have a new serial device `/dev/ttyACM[X]`.
+To access this device you will likely need to either use the root user / sudo or add your user to the dialout group. Try one of the following to do this:
+- `sudo adduser $USER dialout`
+- `sudo usermod -aG dialout $USER`
