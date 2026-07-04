@@ -4,14 +4,15 @@ from sys import argv
 from time import sleep
 from datetime import datetime
 
-from bearcat import find_scanners, detect_scanner
+from bearcat.tools import detect_scanner
+from bearcat.scanners.bc125at import BC125AT
 
 LOG_FILE = 'log.csv'
 
 running = True
 
 
-def exit_gracefully(_, __):
+def exit_gracefully(sig_num, frame):
     """Handles a keyboard interrupt to shut down the script."""
     global running
     print('Quitting...')
@@ -19,20 +20,13 @@ def exit_gracefully(_, __):
 
 
 # find a scanner either from a given address or scanning
-if len(argv) > 1:
-    bc = detect_scanner(argv[1])
-else:
-    scanners = find_scanners()
-    if len(scanners) == 0:
-        print('No scanners found')
-        exit(1)
-    else:
-        bc = scanners[0]
+port = argv[1] if len(argv) > 1 else ''
+bc = detect_scanner(port)
 
 signal.signal(signal.SIGINT, exit_gracefully)
 
 # print screen once, future prints will overlap this one
-screen, squelch, mute = bc.get_status()
+screen = bc.get_status()[0]
 print(screen)
 last_line_count = len(screen.lines)
 
@@ -50,7 +44,7 @@ while running:
         receiving, _, _ = bc.get_reception_status()
     # detect squelch end
     elif not squelch and receiving:
-        length = (datetime.now() - started_at).total_seconds()
+        length = (datetime.now() - started_at).total_seconds(0)
         if length > 0.5:
             with open(LOG_FILE, 'a') as f:
                 f.write(f'{started_at},{round(length, 1)},{receiving.name},{receiving.frequency},{receiving.modulation.value},{receiving.tone_code}\n')

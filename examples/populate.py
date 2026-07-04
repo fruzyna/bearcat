@@ -2,27 +2,17 @@
 from sys import argv
 from pathlib import Path
 
-from bearcat import Modulation, Channel
-from bearcat import find_scanners, detect_scanner
+from bearcat.classes import Modulation, Channel
+from bearcat.tools import detect_scanner
 
 
 # filters to select channels by using the first column
 SELECT_FROM = ['NWS', 'LOCAL']
-FILE_DIR = Path('/scanner')
+FILE_DIR = Path('/channels')
 
 # find a scanner either from a given address or scanning
-if len(argv) > 1:
-    bc = detect_scanner(argv[1])
-    if bc is None:
-        print('No scanners found')
-        exit(1)
-else:
-    scanners = find_scanners()
-    if len(scanners) == 0:
-        print('No scanners found')
-        exit(1)
-    else:
-        bc = scanners[0]
+port = argv[1] if len(argv) > 1 else ''
+bc = detect_scanner(port)
 
 i = 0
 chans = {}

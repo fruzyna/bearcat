@@ -11,7 +11,8 @@ from soundfile import SoundFile
 from time import sleep, monotonic
 from sounddevice import Stream, query_devices
 
-from bearcat import RadioState, find_scanners, detect_scanner
+from bearcat.classes import RadioState
+from bearcat.tools import detect_scanner
 
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -130,12 +131,8 @@ stream.start()
 print('Audio stream started')
 
 # find a scanner
-bcs = find_scanners()
-if len(bcs) == 0:
-    print('No scanners found')
-    exit(1)
-else:
-    bc = bcs[0]
+port = argv[1] if len(argv) > 1 else ''
+bc = detect_scanner(port)
 
 signal.signal(signal.SIGINT, exit_gracefully)
 

@@ -3,7 +3,6 @@ import signal
 #import whisper
 import warnings
 import numpy as np
-from typing import List
 from pathlib import Path
 from threading import Thread
 from datetime import datetime
@@ -174,7 +173,7 @@ def process_thread():
 
 
 squelched = [False] * NUM_STREAMS
-recorders: List[Recorder] = []
+recorders: list[Recorder] = []
 running = True
 
 print(query_devices())
