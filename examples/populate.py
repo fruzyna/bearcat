@@ -7,7 +7,7 @@ from bearcat.tools import detect_scanner
 
 
 # filters to select channels by using the first column
-SELECT_FROM = ['NWS', 'LOCAL']
+SELECT_FROM = ['NWS', 'UNION', 'LINCOLN', 'BOREALIS']
 FILE_DIR = Path('/channels')
 
 # find a scanner either from a given address or scanning
@@ -29,15 +29,12 @@ for file in FILE_DIR.glob('*.csv'):
             line = [c.strip() for c in sline.split(',')]
 
             # ignore unpopulated lines
-            if len(line) >= 7 and line[0] and line[5]:
+            if len(line) >= 3 and line[0] and line[2]:
                 section = line[0]
-                number = line[1]
-                index = line[2]
-                name = line[3]
-                secondary_name = line[4]
-                frequency = line[5]
-                tone = line[6]
-                modulation = line[7] if len(line) > 7 else ''
+                name = line[1]
+                frequency = line[2]
+                tone = line[3]
+                modulation = line[4] if len(line) > 3 else ''
 
                 # skip sections not in SELECT_FROM
                 if SELECT_FROM and section not in SELECT_FROM:
@@ -59,21 +56,7 @@ for file in FILE_DIR.glob('*.csv'):
                 if not name:
                     name = section
 
-                # by default channels are named "NAME NUMBER-INDEX" so name is limited to 11 characters
-                name_len = 11
-                number_str = f' {number.rjust(2)}'
-                index_str = f'-{index}'
-                # if no index, increase limit to 13
-                if not index:
-                    name_len += 2
-                    index_str = ''
-                    # if no number, allow full 16 characters to be used
-                    if not number:
-                        name_len = 16
-                        number_str = ''
-
-                name = name[:min(name_len, len(name))].ljust(name_len)
-                chan_name = f'{name}{number_str}{index_str}'
+                name = name[:min(16, len(name))].ljust(16)
 
                 # expects CTCSS/DCS frequency/codes
                 try:
@@ -85,7 +68,7 @@ for file in FILE_DIR.glob('*.csv'):
                 if modulation:
                     mod = Modulation(modulation.upper())
 
-                chan = Channel(i, chan_name, int(float(frequency) * 1e6), mod, bc.TONE_MAP[tone], lockout=False)
+                chan = Channel(i, name, int(float(frequency) * 1e6), mod, bc.TONE_MAP[tone], lockout=False)
                 print(chan)
                 chans[i - 1] = chan
 
